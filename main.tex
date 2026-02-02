@@ -1,25 +1,39 @@
-\documentclass[12pt]{article}
-
-% --- Preamble ---
+\documentclass[10pt,landscape]{article}
 \usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc}
-\usepackage{graphicx}
-\usepackage{hyperref}
+\usepackage[margin=0.5in]{geometry}
+\usepackage{multicol}
+\usepackage{amsfonts, amsmath, amssymb}
+\usepackage{color}
 
-\title{My Modular LaTeX Project}
-\author{Your Name}
-\date{\today}
+\usepackage{graphicx}
+\graphicspath{ {./img/} }
+
+% Custom section styling for compact look
+\makeatletter
+\renewcommand{\section}{\@startsection{section}{1}{0mm}%
+                                {-1ex plus -.5ex minus -.2ex}%
+                                {0.5ex plus .2ex}%
+                                {\normalfont\large\bfseries}}
+\makeatother
 
 \begin{document}
 
-\maketitle
+\begin{multicols*}{3}
+\setlength{\premulticols}{1pt}
+\setlength{\postmulticols}{1pt}
+\setlength{\multicolsep}{1pt}
+\setlength{\columnsep}{20pt}
 
-\tableofcontents
-\newpage
+\include{sections/0_kernel}
+\include{sections/1_processes}
+\include{sections/2_threads}
+\include{sections/3_scheduling}
+\include{sections/4_synch}
+\include{sections/5_synch_ex}
+\include{sections/6_main_memory}
+\include{sections/7_virtual_memory}
+\include{sections/8_file_systems}
+\include{sections/9_fs_impl}
 
-% --- Sections ---
-% Use \include to pull in your .tex files
-\include{sections/intro}
-\include{sections/method}
-
+\end{multicols*}
 \end{document}
