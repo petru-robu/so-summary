@@ -5,6 +5,23 @@
 \usepackage{amsfonts, amsmath, amssymb}
 \usepackage{color}
 
+% Package for code formatting
+\usepackage{listings}
+\usepackage{xcolor}
+
+% Configure the code style
+\lstset{
+    backgroundcolor=\color{gray!10},
+    basicstyle=\ttfamily\scriptsize, % Swapped \small for \scriptsize
+    breaklines=true,
+    captionpos=b,
+    frame=single,
+    language=C,
+    showstringspaces=false,
+    xleftmargin=5pt,   % Optional: adds a little breathing room on the left
+    xrightmargin=5pt   % Optional: adds a little breathing room on the right
+}
+
 \usepackage{graphicx}
 \graphicspath{ {./img/} }
 
@@ -17,6 +34,8 @@
 \makeatother
 
 \begin{document}
+
+\setlength{\parindent}{0pt}
 
 \begin{multicols*}{3}
     \setlength{\premulticols}{1pt}

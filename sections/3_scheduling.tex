@@ -1,0 +1,224 @@
+\section{CPU Scheduling}
+
+How to schedule processes on the CPU efficently? Usually, CPU is a sequence of CPU bursts and I/O bursts (waiting time for I/O). A CPU scheduler selects a process and allocates a core to it.
+
+\begin{itemize}
+	\item \textbf{Preemptive} = can postpone processes (put process in ready state / back in running state)
+	\item \textbf{Non-preemptive} = once process has CPU, the process keeps it until the end or by switching to waiting.
+\end{itemize}
+
+Dispatcher =  gives control of the CPU to the process selected by the CPU scheduler: switching context, switching to user mode, jumping to proper location in the user program to restart it.
+
+Dispatch latency =  time it takes for the dispatcher to stop one process and start another running.
+
+\includegraphics[scale=0.35]{5.9.png}
+
+Scheduling criteria:
+\begin{itemize}
+	\item CPU utilization – keep the CPU as busy as possible
+	\item Throughput – \# of processes that complete their execution per time unit
+	\item Turnaround time – amount of time to execute a particular process
+	\item Waiting time – amount of time a process has been waiting in the ready queue
+	\item Response time – amount of time it takes from when a request was submitted until the first response is produced.
+\end{itemize}
+
+\subsection{FCFS}
+FCFS = First-Come, First-Served
+Put the processes on the CPU the order in which they request it. (this is non-preemptive)
+Convoy effect - short process behind long process (this results in optimal average waiting time)
+
+Example: 
+For processes with burst times $P_1 = 24$; $P_2 = 3$; $P_3 = 3$; This is the resulting Gantt Chart:
+\includegraphics[scale=0.25]{5.12.png}
+
+If the processes come in different order, it is better.
+\includegraphics[scale=0.27]{5.13.png}
+
+\subsection{SJF}
+SJF = Shortest Job First
+Associate with each process the length of its next CPU burst. Use these lengths to schedule the process with the shortest time.
+Optimal average waiting time.
+
+\textbf{Non-Preemptive} version:
+For processes with burst times $P_1 = 6$; $P_2 = 8$; $P_3 = 7$; $P_4 = 3$ This is the resulting Gantt Chart:
+\includegraphics[scale=0.35]{5.15.png}
+
+Determining the length of the next CPU-burst: ask the user to provide estimation / estimate ourselves.
+
+\textbf{Exponential averaging} = Use length of previous CPU-burst and estimate the next one:
+
+$t_n$ = length on n-th CPU burst 
+
+$\tau_{n+1}$ = predicted next CPU burst
+
+$\alpha, 0 \geq \alpha \leq 1$. Commonly $\alpha = \frac{1}{2}$
+
+$\tau_{n+1} = \alpha t_{n} + (1-\alpha)\tau_{n}$
+
+\subsection{SRT}
+SRT = Shortest remaining time first
+
+\textbf{Preemptive} version of SJF:
+For processes with arrival, burst times $P_1 = 0\quad8$; $P_2 = 1\quad4$; $P_3 = 2\quad9$; $P_4 = 3\quad5$ This is the resulting Gantt Chart:
+\includegraphics[scale=0.31]{5.20.png}
+
+\subsection{Round-Robin (RR)}
+Each process gets a small unit of CPU time (time quantum q). After this time has elapsed, the process is preempted and added to the end of the ready queue.
+
+\textbf{Preemptive RR}:
+For processes with burst times: $P_1 = 24$; $P_2 = 3$; $P_3 = 3$ and q = 4, the Gantt chart is:
+\includegraphics[scale=0.28]{5.22.png}
+
+Choose q carefully, take into account context switches, and waiting time of processes:
+
+\includegraphics[scale=0.31]{5.23.png}
+
+\subsection{Priority Scheduling}
+A priority number (integer) is associated with each process. The CPU is allocated to the process with the highest priority (smallest integer = highest priority).
+
+SJF is priority scheduling.
+
+\textbf{Starvation} = low priority processes may never execute. Can fix with \textbf{aging} = as time progresses increase the priority of the process.
+
+\textbf{Non Preemptive Priority Scheduling}:
+For processes with burst times and priority: $P_1 = 10\quad3$; $P_2 = 1\quad1$; $P_3 = 2\quad4$; $P_4 = 1\quad5$; $P_5 = 5\quad2$, the Gantt chart is:
+\includegraphics[scale=0.31]{5.26.png}
+
+\subsection{Priority scheduling with Round Robin}
+Run the process with the highest priority. Processes with the same
+priority run round-robin.
+
+Example:
+For processes with burst and priority: $P_1= 4\quad3$; $P_2 = 5\quad2$; $P_3 = 8\quad2$; $P_4 = 7\quad1$; $P_5 = 3\quad3$ and $q = 2$
+\includegraphics[scale=0.25]{5.27.png}
+
+
+\subsection{Multilevel Queue}
+The ready queue consists of multiple queues.
+
+Each queue has it's own scheduling algorithm + method to determine which queue a process goes to.
+
+Example, multilevel queue by priority:
+\includegraphics[scale=0.28]{5.29.png}
+
+
+\textbf{Multilevel Feedback Queue} = A process can move between the various queues + method to determine which queue a process goes to + method to determine when to upgrade/demote process.
+
+Example (Three queues):
+
+\begin{itemize}
+	\item $Q_0$ = RR with q = 8ms
+	\item $Q_1$ = RR with q = 16ms
+	\item $Q_2$ = FCFS
+\end{itemize}
+
+\includegraphics[scale=0.28]{5.32.png}
+
+When a process gains CPU, the process receives 8 ms. If it does not finish in 8 milliseconds, the
+process is moved to $Q_1$. If the process doesn't finish in 16 ms, it goes to FCFS.
+
+\subsection{Thread scheduling}
+When threads are supported, threads are scheduled, not processes. Use the same algorithms.
+
+\textbf{Process-contention scope (PCS)} = competition within the process. (on many-to-many / one-to-many threading models)
+
+\textbf{System-contention scope (SCS)} = competition among all threads in system (on one-to-one models)
+
+\subsection{Scheduling on paralell systems}
+
+\subsubsection{Multiple-Processor Scheduling}
+\textbf{Symmetric multiprocessing (SMP)} = each processor is self scheduling.
+
+All threads may be in a common ready queue (a) or each processor may have its own private queue of threads (b).
+
+\includegraphics[scale=0.32]{5.38.png}
+
+\subsubsection{Multithreaded Mulitcore systems}
+Each core has \> 1 hardware threads. Then if one thread stalls, switch to another one. If they end up interleaved we have a speedup.
+
+\includegraphics[scale=0.27]{5.40.png}
+
+This is called Chip-multithread (hyperthreading) when you have multiple hardware threads on multiple cores. The systems sees each hw thread as a logical processor.
+
+There are two levels of scheduling here:
+\begin{itemize}
+	\item 1. The operating system deciding which software thread to run on a logical CPU
+	\item 2. How each core decides which hardware thread to run on the physical core.
+\end{itemize}
+
+
+\includegraphics[scale=0.32]{5.42.png}
+
+\subsubsection{Load Balancing}:
+If the arhitecture is SMP, we need to keep all CPUs loaded for efficiency:
+
+\begin{itemize}
+	\item \textbf{Load balancing} attempts to keep workload evenly distributed
+	\item \textbf{Push migration} – periodic task checks load on each processor, and if found pushes task from overloaded CPU to other CPUs
+	\item \textbf{Pull migration} – idle processors pulls waiting task from busy processor
+\end{itemize}
+
+\subsubsection{Processor Affinity}
+When a thread has been running on one processor, the cache contents of that processor stores the memory accesses by that thread. This is called \textbf{Affinity}.
+
+Load balancing may affect affinity.
+
+Solutions:
+\begin{itemize}
+	\item Soft affinity – the operating system attempts to keep a thread running on the same processor, but no guarantees.
+	\item Hard affinity – allows a process to specify a set of processors it may run on.
+\end{itemize}
+
+\subsection{Real-time systems}
+
+Soft real-time systems = Critical real-time tasks have the highest
+priority, but no guarantee as to when tasks will be scheduled
+
+Hard real-time systems = task must be serviced by its deadline
+
+\textbf{Event latency} = the amount of
+time that elapses from when
+an event occurs to when it is
+serviced.
+
+Two types of latencies affect performance:
+
+\begin{itemize}
+	\item Interrupt latency = time from arrival of interrupt to start of routine that services interrupt.
+	\item Dispatch latency – time for schedule to take current process off CPU and switch to another
+\end{itemize}
+
+\includegraphics[scale=0.26]{5.47.png}
+
+Interrupt latency consists of: 1) determining interrupt type and 2) switching the context.
+
+\includegraphics[scale=0.26]{5.49.png}
+
+Conflict phase of dispatch latency is: 1) preemption of any process running in kernel mode and 2) release by low-priority process of of resources needed by high-priority processes.
+
+\subsubsection{Real-time Priority-based Scheduling}
+
+For real-time scheduling, scheduler must support preemptive, priority-
+based scheduling.
+
+Process may be periodic, have a processing time t, deadline d and period p. Rate of periodic task is $\frac{1}{p}$.
+
+A priority is assigned based on the inverse of its period.
+
+\includegraphics[scale=0.27]{5.51.png}
+
+\subsubsection{EDF}
+EDF = Earliest Deadline First Scheduling
+Priorities are assigned according to deadlines: The earlier the deadline, the higher the priority
+
+\includegraphics[scale=0.31]{5.53.png}
+
+\subsubsection{Proportional Share Scheduling}
+$T$ shares are allocated among all processes in the system
+
+An application receives N shares where $N \le T$.
+
+This ensures each application will receive $\frac{N}{T}$ of the total processor time.
+
+\subsection{Little's formula}
+$n = \lambda \cdot W$. 

@@ -1,4 +1,188 @@
-\section{Methods}
-Here is where I describe my process. Because this was called via 
-\texttt{\textbackslash include}, LaTeX ensures this section starts on a 
-fresh page, which is great for readability.
+\section{Processes}
+\subsection{General}
+Process = program (executable / binary) in execution.
+
+Program = passive entity stored on disk; Process = active entity loaded in memory.
+
+Parts of a process:
+\begin{itemize}
+	\item Text section (program code)
+	\item Current activity (program counter and process registers)
+	\item Stack (function parameters, local vars, ret addresses)
+	\item Data section (global variables)
+	\item Heap (dynamically alocated memory)
+\end{itemize}
+
+\includegraphics[scale=0.35]{3.7.png}
+
+Process states: New, Running, Waiting, Ready, Terminated.
+
+\includegraphics[scale=0.35]{3.9.png}
+
+\subsection{PCB}
+Information associated with each process (also called task control block)
+
+PCB contents:
+\begin{itemize}
+	\item Process state – running, waiting, etc.
+	\item Program counter – location of instruction to next execute
+	\item CPU registers – contents of all process-centric registers
+	\item CPU scheduling information- priorities, scheduling queue pointers
+	\item Memory-management information – memory allocated to the process
+	\item Accounting information – CPU used, clock time elapsed since start, time limits
+	\item I/O status information – I/O devices allocated to process, list of open files
+\end{itemize}
+
+When CPU switches context, the respective state stored in the PCB is loaded:
+
+\includegraphics[scale=0.35]{3.16.png}
+
+\subsection{Process creation / termination}
+Parent process create children processes, which, in turn create other processes, forming a tree of processes.
+
+Process is identified and managed via a process identifier (pid).
+\begin{itemize}
+	\item fork() = syscall to create a new child process. Child's adress space is the same as parent. Returns 0 in the child process and PID of the child in parent.
+	\item exec() = replace the child's adress space with another program.
+	\item wait() = parent process calls wait() to wait for the child to terminate.
+	\item exit() = process executes last statement and then asks the operating system to delete it.
+	\item abort() = terminate the execution of children processes.
+	\item waitpid() = waits for a specific child spawned by the process.
+\end{itemize}
+
+\begin{lstlisting}
+int main(int argc, char *argv[])
+{
+    pid_t pid = fork();
+    if(pid < 0)
+        return errno;
+    else if(pid == 0)
+    {
+        //child
+        char *argv[] = {"ls", NULL};
+        execve("/bin/ls", argv, NULL);
+        perror(NULL);
+    }
+    else
+    {
+        //parent
+        wait(NULL);
+        // child finished
+    }
+    return 0;
+}
+\end{lstlisting}
+
+\includegraphics[scale=0.35]{3.21.png}
+
+Exemplu arbore de procese: Câte procese și thread-uri sunt la final? Desenați arborescența de procese și thread-urile aferente.
+\begin{lstlisting}
+fork()
+if (fork()) {
+    fork()
+    if (!fork())
+        pthread_create()
+    else
+        fork()
+    pthread_create()
+}
+\end{lstlisting}
+
+Sunt 14 procese si 16 thread-uri.
+Fiecare cerc este un thread format (prima data cele rosii, la linia 5, apoi cele verzi la linia 8).
+
+\includegraphics[scale=0.35]{arb_tut.png}
+
+Zombie and Orphan processes:
+\begin{itemize}
+	\item Zombie process = a process that has completed execution but still has an entry in the system process table. This happens because the parent didn't invoke wait().
+	\item Orphan process = a living child whose parent has died. Could be because parent exited prematurely or intended in the case of daemons. The process is adopted by process with PID=1.
+\end{itemize}
+
+
+\subsection{Interprocess Communication}
+Processes within a system may be independent or cooperating. Cooperating processes can affect or be affected by other processes for: sharing data, computation speedup, modularity, convenience.
+
+Two models of IPC: Shared memory and Message passing.
+
+\includegraphics[scale=0.35]{3.30.png}
+
+\subsubsection{Shared memory}
+Requires careful synchronization.
+
+Producer-Consumer problem: producer process produces information that is consumed
+by a consumer process. Solved with shared memory by holding a buffer and in/out pointers.
+
+\begin{itemize}
+	\item unbounded-buffer = Producer never waits; Consumer waits if there is no buffer to consume
+	\item bounded-buffer = Producer must wait if all buffers are full; Consumer waits if there is no buffer to consume
+\end{itemize}
+
+Shared memory used in UNIX with shm\_open() to create a shared memory segment and mapped it to a file descriptor via mmap.
+
+\subsubsection{Message passing}
+Processes communicate with each other without resorting to shared variables.
+
+IPC facility provides two operations: \textbf{send(message)} and \textbf{receive(message)}
+
+\begin{itemize}
+	\item Direct Communication = Processes must name each other explicitly: send (P, message) - send a message to process P, receive(Q, message) - receive a message from process Q
+	\item Indirect Communication = Send and receive messages through mailbox: send(A, message) - send a message to mailbox A, receive(A, message) - receive a message from mailbox A
+\end{itemize}
+
+
+Message passing may be either blocking or non-blocking:
+
+\begin{itemize}
+	\item Blocking (synchronous)
+	      \begin{itemize}
+		      \item Blocking send = the sender is blocked until the message is received
+		      \item Blocking receive = the receiver is blocked until a message is available
+	      \end{itemize}
+	\item Non-blocking (asynchronous)
+	      \begin{itemize}
+		      \item Non-blocking send =  the sender sends the message and continue
+		      \item Non-blocking receive = the receiver receives a valid message / NULL
+	      \end{itemize}
+\end{itemize}
+
+If both send and receive are blocking, we have a \textbf{rendezvous}.
+
+As processes can not be synchronized perfectly, we make use of buffering (queue of messages attached to the link):
+\begin{itemize}
+	\item Zero capacity: no messages are queued on a link. Sender must wait for receiver. (rendezvous)
+	\item Bounded capacity: finite length of n messages. Sender must wait if link full.
+	\item Unbounded capacity: infinite length. Sender never waits.
+\end{itemize}
+
+\subsubsection{Signals}
+Signals can be send to a process:
+\begin{itemize}
+	\item SIGINT (ctrl+c) = kills the process
+	\item SIGSTOP (ctrl+z) = stops the process, moves it to background
+	\item SIGSEGV = invalid memory accesed
+	\item etc.
+\end{itemize}
+
+
+\subsubsection{Pipes}
+Acts as a conduit allowing two processes to communicate.
+
+\textbf{Ordinary pipes (anonymous)} = cannot be accessed from outside the process that created it. Typically, a parent process creates a pipe and uses it to communicate with a child process that it created.
+
+\textbf{Named pipes} = can be accessed without a parent-child relationship.
+
+\includegraphics[scale=0.25]{3.61.png}
+
+\subsubsection{Sockets}
+A socket is defined as an endpoint for communication. Concatenation of \textbf{IP address and port} (a number included at start of
+message packet to differentiate network services on a host).
+
+loopback (127.0.0.1) = system on which process is running
+
+\subsubsection{RPCs}
+RPCs = remote procedure calls. Abstracts procedure calls between processes on networked systems
+Stubs =  client-side proxy for the actual procedure on the server
+
+The client-side stub locates the server and marshalls the parameters. The server-side stub receives this message, unpacks the marshalled
+parameters, and performs the procedure on the server
