@@ -1,0 +1,141 @@
+
+\section{Synchronization Examples}
+
+\subsection{Bounded-Buffer Problem}
+Producer-Consumer problem: producer process produces information that is consumed by a consumer process.
+
+Bounded buffer = Producer must wait if all buffers are full; Consumer waits if there is no buffer to consume.
+
+There are $n$ buffers.
+
+Solution:
+\begin{itemize}
+	\item semaphore mutex (binary semaphore, acts as mutex)
+	\item semaphore full (initialized to 0)
+	\item semaphore empty (initialized to n)
+\end{itemize}
+
+\begin{minipage}{\linewidth}
+\begin{lstlisting}
+while (true) {
+	...
+	/* produce an item in next_produced */
+	...
+	wait(empty);
+	wait(mutex);
+	...
+	/* add next produced to the buffer */
+	...
+	signal(mutex);
+	signal(full);
+}
+\end{lstlisting}
+\end{minipage}
+
+\begin{minipage}{\linewidth}
+\begin{lstlisting}
+while (true) {
+	wait(full);
+	wait(mutex);
+	...
+	/* remove an item from buffer to next_consumed */
+	...
+	signal(mutex);
+	signal(empty);
+	...
+	/* consume the item in next consumed */
+	...
+}
+\end{lstlisting}
+\end{minipage}
+
+\subsection{Readers and Writers Problem}
+A data set is shared among a number of concurrent processes:
+\begin{itemize}
+	\item \textbf{Readers} - only read the data set; they do not perform any updates
+	\item \textbf{Writers} - can both read and write
+\end{itemize}
+
+Allow multiple readers to read at the same time.
+
+One writer can access the shared data at the same time.
+
+Solution:
+\begin{itemize}
+	\item Semaphore rw\_mutex initialized to 1
+	\item Semaphore mutex initialized to 1
+	\item Integer read\_count initialized to 0
+\end{itemize}
+
+\begin{minipage}{\linewidth}
+\begin{lstlisting}
+// Reader
+while (true){
+	wait(mutex);
+	read_count++;
+	if (read_count == 1) /* first reader */
+		wait(rw_mutex);
+		signal(mutex);
+	...
+		/* reading is performed */
+	...
+		wait(mutex);
+	read_count--;
+	if (read_count == 0) /* last reader */
+		signal(rw_mutex);
+	signal(mutex);
+}
+\end{lstlisting}
+\end{minipage}
+
+\begin{minipage}{\linewidth}
+\begin{lstlisting}
+// Writer
+while (true) {
+	wait(rw_mutex);
+	...
+	/* writing is performed */
+	...
+	signal(rw_mutex);
+}
+\end{lstlisting}
+\end{minipage}
+
+There is a problem, a writer process may never write. This problem above is called \textbf{"First
+reader-writer"}.
+
+\textbf{"Second reader-writer"}: Once a writer is ready to write, no "newly arrived reader" is allowed to read.
+
+On some systems, there are rw\_locks specifically designed for this.
+
+\subsection{Dining-Philosophers Problem}
+
+\begin{itemize}
+	\item $N$ philosophers sit at a round table with a bowel of rice in the middle.
+	\item They spend their lives alternating thinking and eating.
+	\item They do not interact with their neighbors.
+	\item Occasionally try to pick up 2 chopsticks (one at a time) to eat from bowl (Need both to eat, then release both when done)
+\end{itemize}
+
+\includegraphics[scale=0.25]{7.12.png}
+
+Naive semaphore solution (this results in deadlock, consider everyone picks-up left chopstick):
+\begin{minipage}{\linewidth}
+\begin{lstlisting}
+while (true){
+	wait (chopstick[i] );
+	wait (chopStick[ (i + 1) % 5] );
+	/* eat for awhile */
+	signal (chopstick[i] );
+	signal (chopstick[ (i + 1) % 5] );
+	/* think for awhile */
+}
+\end{lstlisting}
+\end{minipage}
+
+Some deadlock-free solution, though not starvation-free:
+\begin{itemize}
+	\item Allow at most four philosophers to be sitting simultaneously at the table.
+	\item Allow a philosopher to pick up her chopsticks only if both chopsticks are available (to do this, she must pick them up in a critical section).
+	\item An odd-numbered philosopher picks up first her left chopstick and then her right chopstick, whereas an even-numbered philosopher picks up her right chopstick and then her left chopstick.
+\end{itemize}

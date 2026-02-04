@@ -1,0 +1,191 @@
+\section{File-system Implementation}
+
+\subsection{File System Structure and Layers}
+The file system resides on secondary storage and provides a user interface to storage, mapping logical units to physical blocks. It is organized into layers to reduce complexity:
+
+\begin{itemize}
+	\item \textbf{Application Programs}: User-level requests.
+	\item \textbf{Logical File System}: Manages metadata and directory structures; translates file names into file numbers/handles using File Control Blocks (FCB) - inodes in UNIX.
+	\item \textbf{File-Organization Module}: Translates logical block numbers to physical block numbers and manages free space.
+	\item \textbf{Basic File System}: Issues generic commands to device drivers and manages memory buffers and caches.
+	\item \textbf{I/O Control}: Contains device drivers and interrupt handlers to bridge the gap between high-level commands and hardware.
+	\item \textbf{Devices}: Physical hardware like disks or NVM.
+\end{itemize}
+
+\subsection{Control Blocks}
+\subsubsection{Boot Control Block}
+Contains the information needed by the system to boot the OS from a specific volume. It is typically the first block of an OS-containing volume.
+
+\subsubsection{Volume control block (superblock, master file table)}
+Contains volume details:  Total \# of blocks, \# of free blocks, block size, free block pointers or array.
+
+\subsubsection{File Control Block (FCB)}
+An OS maintains an FCB per file, containing metadata such as:
+\begin{itemize}
+	\item Permissions (read/write/execute).
+	\item File dates (creation, access, write)
+	\item Owner, group, and Access Control List (ACL)
+	\item File size and data block pointers
+\end{itemize}
+
+\includegraphics[scale=0.33]{14.10.png}
+
+\subsection{In-Memory Structures}
+The OS uses in-memory structures to track active file systems and open files:
+\begin{itemize}
+	\item \textbf{Mount Table}: Stores information about mounted volumes and their types.
+	\item \textbf{System-wide Open-file Table}: Contains a copy of the FCB for every file open in the system.
+	\item \textbf{Per-process Open-file Table}: Tracks the current file pointer and points to the system-wide table.
+\end{itemize}
+
+a) Refers to opening a file.
+
+b) Refers to reading a file.
+
+\includegraphics[scale=0.33]{14.12.png}
+
+\subsection{Directory Implementation}
+\begin{itemize}
+	\item \textbf{Linear List}: A simple list of names with pointers to data blocks; easy to program but requires linear search time ($O(n)$).
+	\item \textbf{Hash Table}: Uses a hash function to reduce search time, though it must handle collisions.
+\end{itemize}
+
+\subsection{Allocation Methods}
+An allocation method refers to how disk blocks are allocated for files.
+
+\subsubsection{Contiguous Allocation}
+Each file occupies a set of contiguous blocks on the disk.
+\begin{itemize}
+	\item \textbf{Benefits}: Best performance for sequential and random access.
+	\item \textbf{Logic}: Needs only starting block number and length.
+	\item \textbf{Issues}: External fragmentation and difficulty predicting file growth.
+\end{itemize}
+
+Example:
+
+Mapping from logical to physical (block size = 512 bytes). Block to be accessed = starting address + Q. Displacement into block = R.
+
+\includegraphics[scale=0.30]{14.16.png}
+
+\subsubsection{Extent-Based Systems}
+Extent-based file systems allocate disk blocks in extents. An extent is a contiguous block of disks. Extents are allocated for file allocation. A file consists of one or more extents.
+
+\subsubsection{Linked Allocation}
+Each file is a linked list of blocks; pointers are stored within the blocks themselves. File ends at NULL.
+\begin{itemize}
+	\item \textbf{Benefits}: No external fragmentation.
+	\item \textbf{Issues}: Not suitable for random access; a single lost pointer breaks the file.
+\end{itemize}
+
+Example:
+Mapping from logical to physical (block size = 512 bytes). Block to be accessed is the Q th block in the linked chain of blocks representing the file.
+
+Displacement into block = R + 1
+
+
+\includegraphics[scale=0.30]{14.19.png}
+
+\subsubsection{File Allocation Table (FAT)}
+A variation of linked allocation where all pointers are stored in a central table at the beginning of the volume. This table is cacheable, making access faster than standard linked allocation.
+
+\includegraphics[scale=0.30]{14.22.png}
+
+\subsubsection{Indexed Allocation}
+Each file has its own \textbf{index block} containing pointers to its data blocks. This allows efficient random access without external fragmentation.
+
+\includegraphics[scale=0.25]{14.23.png}
+\includegraphics[scale=0.29]{14.24.png}
+
+\subsection{Two-Level Indexed Scheme}
+For very large files, a single index block may be insufficient. A \textbf{two-level index} uses an outer-index pointing to inner-index blocks, which then point to the data blocks.
+\begin{itemize}
+	\item \textbf{Example}: Using 4KB blocks and 4-byte pointers, an outer index can store 1,024 pointers to inner indices, supporting file sizes up to 4GB.
+\end{itemize}
+
+
+\subsection{Free-Space Management}
+\subsubsection{Bitmap (Bit Vector)}
+The disk is represented by a sequence of bits: $1$ indicates a free block, $0$ indicates occupied.
+\begin{itemize}
+	\item \textbf{Calculation of Bitmap Size}:
+	      If disk size is $2^{40}$ bytes (1TB) and block size is $2^{12}$ bytes (4KB):
+	      \[ n = \frac{2^{40}}{2^{12}} = 2^{28} \text{ bits} \]
+	      \[ \text{Size in bytes} = \frac{2^{28}}{8} = 2^{25} \text{ bytes} = 32\text{MB} \]
+\end{itemize}
+\subsubsection{Linked list (free list)}
+Another approach to free-space management is to link together all the free
+blocks, keeping a pointer to the first free block in a special location in the file
+system and caching it in memory. 
+
+\includegraphics[scale=0.29]{14.35.png}
+
+\begin{itemize}
+	\item Cannot get contiguous space easily.
+	\item No waste. Linked Free Space List on Disk of space.
+	\item No need to traverse the entire list (if \# of free blocks recorded)
+\end{itemize}
+
+Other approaches to improve the free list include:
+\begin{itemize}
+	\item \textbf{Grouping}: Modify linked list to store address of next n-1 free blocks in first free block, plus a pointer to next block that contains free-block pointers.
+	\item \textbf{Counting}:  Because space is frequently contiguously used and freed, with contiguous-allocation allocation, extents, or clustering. Keep address of first free block and count of following free blocks. Free space list then has entries containing addresses and counts.
+	\item \textbf{Space Maps (ZFS)}: A space map is essentially an append-only list of events (allocations and frees). When ZFS needs to find space, it reads this compact log into memory and constructs an AVL tree (a balanced binary search tree) to represent the free segments.
+\end{itemize}
+
+\subsection{Efficiency and Performance}
+\begin{itemize}
+	\item \textbf{Buffer cache} = separate section of main memory for frequently used blocks.
+	\item \textbf{Free-behind and read-ahead} – techniques to optimize sequential access.
+	\item \textbf{Asynchronous writes} = buffer-able, faster
+\end{itemize}
+
+
+\subsubsection{Page Cache}
+A page cache caches pages rather than disk blocks using
+virtual memory techniques and addresses.
+
+Memory-mapped I/O uses a page cache.
+
+\subsubsection{Caching vs. Unified Buffer Cache}
+\begin{itemize}
+	\item \textbf{Standard I/O}: Uses a buffer (disk) cache for file system blocks.
+	\item \textbf{Memory-Mapped I/O}: Uses a page cache for virtual memory pages.
+	\item \textbf{Unified Buffer Cache}: A single cache for both memory-mapped and standard I/O, preventing "double caching" and improving efficiency.
+\end{itemize}
+
+I/O Without a Unified Buffer Cache: 
+\includegraphics[scale=0.29]{14.42.png}
+
+I/O Using a Unified Buffer Cache:
+\includegraphics[scale=0.29]{14.44.png}
+
+\subsubsection{Recovery}
+\textbf{Consistency checking} = compares data in directory structure
+with data blocks on disk, and tries to fix inconsistencies
+
+\subsection{Log Structured File Systems}
+Log structured (or journaling) file systems record each metadata update
+to the file system as a transaction.
+
+All transactions are written to a log:
+\begin{itemize}
+	\item A transaction is considered committed once it is written to the log (sequentially).
+	\item Sometimes to a separate device or section of disk.
+	\item However, the file system may not yet be updated.
+\end{itemize}
+
+The transactions in the log are asynchronously written to the file system
+structures. When the file system structures are modified, the transaction is
+removed from the log.
+
+\textbf{Data safety:}
+If the file system crashes, all remaining transactions in the log must still be
+performed. Faster recovery from crash, removes chance of inconsistency of metadata
+
+\subsection{In-Memory File System Structures}
+
+\begin{itemize}
+	\item \textbf{Mount table} storing file system mounts, mount points, file system types.
+	\item \textbf{System-wide open-file table} contains a copy of the FCB of each file and other info.
+	\item \textbf{Per-process open-file table} contains pointers to appropriate entries in system-wide open-file table as well as other info.
+\end{itemize}
