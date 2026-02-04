@@ -1,0 +1,128 @@
+\section{File-System Interface}
+
+A \textbf{file} is a contiguous logical address space defined by its creator, containing data (numeric, character, binary) or programs .
+
+\subsection{File Attributes and Operations}
+
+\textbf{File Attributes} are stored in the directory structure on disk and vary by system :
+\begin{itemize}
+    \item \textbf{Name:} Human-readable identifier.
+    \item \textbf{Identifier:} Unique tag (number) within the file system.
+    \item \textbf{Type:} Support for different formats (e.g., .exe, .txt).
+    \item \textbf{Location:} Pointer to the device and location on that device.
+    \item \textbf{Size:} Current file size.
+    \item \textbf{Protection:} Controls for reading, writing, and executing.
+    \item \textbf{Time, date, and user ID:} Data for security and usage monitoring.
+\end{itemize}
+
+
+\subsubsection{File Operations}
+The operating system provides several basic system calls to manage files :
+\begin{itemize}
+    \item \textbf{Create / Delete / Truncate}
+    \item \textbf{Read / Write:} Handled at specific pointer locations.
+    \item \textbf{Seek:} Repositioning the pointer within the file.
+    \item \textbf{Open($F_i$):} Searches the directory for entry $F_i$ and copies it to memory.
+    \item \textbf{Close($F_i$):} Moves memory content back to the directory structure.
+\end{itemize}
+
+\subsubsection{File Locking}
+Used to mediate access to a file, similar to reader-writer locks :
+\begin{itemize}
+    \item \textbf{Shared Lock:} Multiple processes can acquire concurrently (reader lock).
+    \item \textbf{Exclusive Lock:} Only one process can hold the lock (writer lock).
+    \item \textbf{Advisory vs. Mandatory:} In advisory, processes check lock status; in mandatory, the OS enforces access denial.
+\end{itemize}
+
+\subsection{Open Files}
+To manage open files, the OS maintains an \textbf{open-file table} . Key data pieces include:
+\begin{itemize}
+    \item \textbf{File Pointer:} Per-process tracking of the last read/write location.
+    \item \textbf{File-open Count:} Tracks how many processes have the file open to determine when to remove it from the table.
+    \item \textbf{Disk Location:} Cached information for fast data access.
+    \item \textbf{Access Rights:} Mode information (read/write) for each process.
+\end{itemize}
+
+\subsection{Directory Structure and Operations}
+The directory is a collection of nodes containing information about all files .
+
+\includegraphics[scale=0.22]{13.7.png} % Directory Structure Diagram
+
+\textbf{Operations performed on directories:} Search, Create, Delete, List, Rename, and Traverse the system .
+
+\subsection{Access Methods}
+
+\subsubsection{Sequential Access}
+Information is processed in order, one record after the other .
+\begin{itemize}
+    \item \textbf{Operations:} \texttt{read next}, \texttt{write next}, \texttt{reset}.
+\end{itemize}
+\includegraphics[scale=0.25]{13.16.png} % Sequential Access Diagram
+
+\subsubsection{Direct Access}
+Allows fixed-length logical records to be read or written in any order by referring to a \textbf{relative block number} ($n$) .
+\begin{itemize}
+    \item \textbf{Operations:} \texttt{read n}, \texttt{write n}, \texttt{position to n}.
+\end{itemize}
+
+\subsubsection{Simulating Sequential on Direct Access}
+Sequential access can be simulated by maintaining a current position pointer ($cp$) :
+\begin{itemize}
+    \item \textbf{Reset:} $cp = 0;$
+    \item \textbf{Read Next:} \texttt{read cp; cp = cp + 1;}
+\end{itemize}
+
+\subsection{Disk and File System Organization}
+Disks are subdivided into \textbf{partitions} (or slices) .
+
+\includegraphics[scale=0.2]{13.22.png} % Typical File-System Organization
+
+\subsection{Directory Logical Structures}
+
+\subsubsection{Single-Level Directory}
+All files are contained in the same directory for all users .
+\begin{itemize}
+    \item \textbf{Pros:} Simple.
+    \item \textbf{Cons:} Naming conflicts (two users can't use the same name) and no grouping.
+\end{itemize}
+\includegraphics[scale=0.2]{13.27.png} % Single-Level Diagram
+
+\subsubsection{Two-Level Directory}
+Each user has their own \textbf{user file directory} (UFD) under a \textbf{master file directory} (MFD) .
+\begin{itemize}
+    \item \textbf{Pros:} Solves naming conflicts; efficient searching via path names.
+    \item \textbf{Cons:} Still lacks sophisticated grouping capability.
+\end{itemize}
+\includegraphics[scale=0.2]{13.28.png} % Two-Level Diagram
+
+\subsubsection{Tree-Structured Directories}
+The most common structure, allowing users to create subdirectories and organize files arbitrarily .
+\includegraphics[scale=0.2]{13.29.png} % Tree-Structured Diagram
+
+\subsubsection{Acyclic-Graph Directories}
+Allows shared subdirectories and files, meaning a file can exist in two directories simultaneously (aliasing) .
+\begin{itemize}
+    \item \textbf{Implementation:} Uses \textbf{Links} (pointers to existing files).
+    \item \textbf{Deletion:} Can lead to dangling pointers. Solutions include \textbf{backpointers} or \textbf{reference counts} (only delete file when count = 0).
+\end{itemize}
+\includegraphics[scale=0.2]{13.30.png} % Acyclic-Graph Diagram
+
+\subsubsection{General Graph Directory}
+Allows cycles within the directory structure .
+\begin{itemize}
+    \item \textbf{Cycle Detection:} To avoid infinite loops during traversal, systems may use \textbf{garbage collection} or a \textbf{cycle detection algorithm} every time a link is added.
+\end{itemize}
+\includegraphics[scale=0.2]{13.32.png} % General Graph Diagram
+
+\subsection{Protection}
+The file owner must control what can be done and by whom .
+\textbf{Access Types:} Read, Write, Execute, Append, Delete, List .
+
+\subsubsection{UNIX RWX Access}
+In UNIX/Linux, protection is handled via three classes of users with three bits (Read: first bit, Write: second bit, eXecute: third bit) :
+\begin{enumerate}
+    \item \textbf{Owner:} (e.g., 7 $\rightarrow$ 111)
+    \item \textbf{Group:} (e.g., 6 $\rightarrow$ 110)
+    \item \textbf{Public:} (e.g., 1 $\rightarrow$ 001)
+\end{enumerate}
+Commands like \texttt{chmod 761 game} define these permissions, while \texttt{chgrp} attaches a specific group to a file .
