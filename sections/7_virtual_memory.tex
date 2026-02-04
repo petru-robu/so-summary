@@ -1,0 +1,491 @@
+\section{Virtual memory}
+
+We want to load a program in memory so we can execute it. Main memory may be less than program size (run a 32GB exe on 8GB ram). The entire program code is not needed at the same time
+
+\textbf{Virtual memory} = separation of user logical memory from physical memory
+
+The virtual address space must be mapped to physical address space via a Memory-Mapping unit (MMU).
+
+\includegraphics[scale=0.32]{10.7.png}
+
+Benefits:
+\begin{itemize}
+	\item Only part of the program needs to be in memory for execution
+	\item Logical address space can therefore be much larger than physical address space
+	\item Allows address spaces to be shared by several processes
+	\item More programs running concurrently
+	\item Less I/O needed to load or swap processes
+\end{itemize}
+
+Virtual memory can be implemented via:
+\begin{itemize}
+	\item \textbf{Demand paging}
+	\item \textbf{Demand segmentation}
+\end{itemize}
+
+By virtual memory we can share pages, useful for dynamic loading and linking. Sharing libraries.
+
+\includegraphics[scale=0.27]{10.9.png}
+
+% \subsection{Demand Paging}
+
+% Bring a page into memory only when it is needed (Less memory needed, Less I/O needed, Faster response).
+
+% If a page is needed: Invalid reference (abort) or if not in memory bring it.
+
+% \textbf{Lazy swapper/pager} = never swaps a page into memory unless page will
+% be needed. 
+
+% \includegraphics[scale=0.32]{10.11.png}
+
+% With swapping, pager guesses which pages will be used before swapping out again. We need a MMU that can take into account that some pages are \textbf{memory resident}.
+
+% Hardware support needed for demand paging
+% \begin{itemize}
+% 	\item \textbf{Page table} with valid / invalid bit
+% 	\item Secondary memory (swap device with \textbf{swap space})
+% 	\item Instruction restart
+% \end{itemize}
+
+% \subsubsection{Valid-Invalid Bit}
+% With each page table entry a valid-invalid bit is associated (v means in-memory - memory resident, i means not-in-memory). Initially, everything is set to invalid.
+
+% \includegraphics[scale=0.22]{10.13.png}
+
+% \textbf{Page fault} =  During MMU address translation, if valid-invalid bit in page table entry is invalid.
+
+% Steps to handle a page fault:
+% \begin{itemize}
+% 	\item If there is a reference to a page, first reference to that page will trap to operating system.
+% 	\item Operating system looks at another table to decide if:
+% 		\begin{itemize}
+% 			\item Invalid reference
+% 			\item Not in memory
+% 		\end{itemize}
+% 	\item Find free frame
+% 	\item Swap page into frame via disk operation
+% 	\item Reset tables to set the validation bit as valid for that frame.
+% 	\item Redo the instruction that caused page fault.
+% \end{itemize}
+
+% \includegraphics[scale=0.35]{10.16.png}
+
+% \subsubsection{Free-Frame List}
+% Free-frame list tracks which physical memory frames are currently available. This minimizes latency.
+
+% \textbf{Zero-fill-on-demand} = For security, the OS often clears the contents of frames in the free-frame list.
+
+% \textbf{Buffering} = OS kernels typically try to maintain a "pool" of free frames. If the list gets too short, a page-replacement algorithm (like LRU) is triggered in the background to reclaim frames
+
+
+% \subsubsection{Stages in Demand Paging}
+
+% \begin{itemize}
+% 	\item Trap to the operating system
+% 	\item Save the user registers and process state
+% 	\item Determine that the interrupt was a page fault
+% 	\item Check that the page reference was legal and determine the location of the page on the disk
+% 	\item Issue a read from the disk to a free frame:
+% 		\begin{itemize}
+% 			\item Wait in a queue for this device until the read request is serviced
+% 			\item Wait for the device seek and/or latency time
+% 			\item Begin the transfer of the page to a free frame
+% 		\end{itemize}
+% 	\item While waiting, allocate the CPU to some other user
+% 	\item Receive an interrupt from the disk I/O subsystem (I/O completed)
+% 	\item Save the registers and process state for the other user
+% 	\item Determine that the interrupt was from the disk
+% 	\item Correct the page table and other tables to show page is now in memory
+% 	\item Wait for the CPU to be allocated to this process again
+% 	\item Restore the user registers, process state, and new page table, and then resume the interrupted instruction
+% \end{itemize}
+\subsection{Demand Paging}
+Demand paging is a strategy where pages are loaded into memory only when accessed. This results in \textbf{lower I/O consumption}, \textbf{reduced memory usage}, and \textbf{faster response times}.
+
+\begin{description}
+	\item[Lazy Pager:] Never swaps a page into memory unless it is specifically needed.
+	\item[Memory Resident:] Pages that are currently located in physical RAM.
+\end{description}
+
+\includegraphics[scale=0.32]{10.11.png}
+
+\subsubsection{Hardware Support}
+To implement demand paging, the system requires three critical components:
+\begin{enumerate}
+	\item \textbf{Page Table with Valid-Invalid Bit:}
+	      \begin{itemize}
+		      \item \texttt{v}: In-memory (Resident).
+		      \item \texttt{i}: Not-in-memory (Page fault or invalid).
+	      \end{itemize}
+	\item \textbf{Secondary Memory:} A swap device (HDD/SSD) providing \textbf{swap space}.
+	\item \textbf{Instruction Restart:} The ability to restart a CPU instruction from scratch after a page fault is resolved.
+\end{enumerate}
+
+\subsubsection{Handling a Page Fault}
+A \textbf{Page Fault} occurs when the MMU encounters an `i` bit during address translation. The OS resolves this via the following sequence:
+
+\begin{enumerate}
+	\item \textbf{Trap:} The hardware traps to the OS.
+	\item \textbf{Internal Verification:} OS checks an internal table to see if the reference was a legal access (not-in-memory) or a segment violation (abort).
+	\item \textbf{Allocation:} Locate a frame from the \textbf{Free-Frame List}.
+	\item \textbf{Disk I/O:} Schedule a disk operation to read the desired page into the new frame.
+	\item \textbf{Update:} Modify the page table entry to \texttt{v} and record the frame number.
+	\item \textbf{Restart:} Resume the instruction that caused the trap.
+\end{enumerate}
+
+\includegraphics[scale=0.35]{10.16.png}
+
+\subsubsection{The Free-Frame List}
+The OS maintains a pool of available physical frames to satisfy page faults immediately.
+\begin{itemize}
+	\item \textbf{Zero-fill-on-demand:} Frames are cleared (zeroed) before allocation for security, preventing data leakage between processes.
+	\item \textbf{Performance Buffering:} The OS maintains a "low water mark" threshold. If the list shrinks too much, background \textbf{Page Replacement} (e.g., LRU) is triggered to reclaim space before the system stalls.
+\end{itemize}
+
+\subsubsection{Detailed Execution Stages}
+
+\noindent
+\begin{enumerate}
+	\item \textbf{Interrupt:} Trap to OS and save process state/registers.
+	\item \textbf{Identify:} Determine the trap was a page fault; verify legality and disk location.
+	\item \textbf{I/O Request:} Issue disk read. While waiting (Seek/Latency), the CPU is context-switched to another user.
+	\item \textbf{Completion:} Receive disk interrupt; save current user state.
+	\item \textbf{Update:} Update Page Table to show the page is now resident.
+	\item \textbf{Resume:} Wait for CPU scheduler, restore original process registers, and restart the instruction.
+\end{enumerate}
+
+\subsubsection{Performance of Demand Paging}
+
+\textbf{Page Fault Rate ($p$):} $0 \leq p \leq 1$
+\begin{itemize}
+	\item If $p = 0$, there are no page faults.
+	\item If $p = 1$, every reference is a fault.
+\end{itemize}
+
+\textbf{Effective Access Time (EAT):}
+\begin{multline*}
+	EAT = (1-p) \times \text{memory access} + \\
+	p \times (\text{page fault overhead} + \text{swap out/in} + \text{restart})
+\end{multline*}
+
+Example:
+\begin{itemize}
+	\item Memory access time = \textbf{200 ns}
+	\item Average page-fault service time = \textbf{8 ms ($8,000,000$ ns)}
+\end{itemize}
+
+If 1 out of 1,000 accesses causes a page fault ($p = 0.001$):
+\begin{align*}
+	EAT & = (1 - 0.001) \times 200 + 0.001 \times 8,000,000 \\
+	EAT & = 199.8 + 8,000 = \mathbf{8,199.8 \text{ ns}}
+\end{align*}
+
+\textbf{Conclusion:} Even with a $0.1\%$ fault rate, the system slows down by a factor of 40. Performance is highly sensitive to the page fault rate.
+
+\subsubsection{Copy-on-Write}
+\textbf{Copy-on-Write (COW)} = allow both parent and child to initially share the same pages on memory.
+
+If a process modifies a page the page is the copied for that process.
+
+Let's say $P_1$ and $P_2$ share pages A, B, C. If $P_1$ modifies C, then we have:
+
+\includegraphics[scale=0.235]{10.27.png}
+
+\subsection{Page Replacement}
+If there are no Free Frames available? We need to replace a paged mapped to a frame.
+
+\textbf{Dirty bit} = When a page is selected as a "victim" to be swapped out to make room for a new page, the OS must decide if it needs to write that page back to the disk. Maybe the process changed something and need to save the changes back in memory. If page is modified set dirty bit.
+
+Steps:
+\begin{itemize}
+	\item Find the location of the desired page on disk
+	\item Find a free frame:
+	      \begin{itemize}
+		      \item If there is a free frame, use it
+		      \item If there is no free frame, use a page replacement algorithm to select a victim frame.
+		      \item Write victim frame to disk if dirty.
+	      \end{itemize}
+	\item Bring the desired page into the (newly) free frame; update the page and frame tables
+	\item Continue the process by restarting the instruction that caused the trap
+\end{itemize}
+
+This procedure incereases EAT.
+
+\includegraphics[scale=0.32]{10.32.png}
+
+\textbf{Frame-allocation algorithms} = determines how many frames to give each process. Which frames to replace.
+
+\textbf{Page-replacement algorithms} = Want lowest page-fault rate on first access and re-access.
+
+\subsubsection{FIFO}
+
+\textbf{First-In-First-Out (FIFO)}
+First frame in will be the first out when need to replace. Uses a queue.
+
+\textbf{Belady's Anomaly} = adding more frames can cause more page faults.
+
+Example:
+
+\includegraphics[scale=0.25]{10.35.png}
+
+
+\subsubsection{OPT (Optimal Algorithm)}
+\begin{itemize}
+	\item Replace the page that \textbf{will not be used for the longest period of time}.
+	\item Problem: We can't read the future. So we need a compromise: LRU.
+\end{itemize}
+
+Example:
+
+\includegraphics[scale=0.23]{10.37.png}
+
+\subsubsection{LRU (Least Recently Used)}
+\begin{itemize}
+	\item Use past knowledge rather than future.
+	\item Replace page that \textbf{has not been used for the longest period of time}.
+\end{itemize}
+
+Example:
+
+\includegraphics[scale=0.24]{10.38.png}
+
+There are two implementations for LRU:
+\begin{itemize}
+	\item Counter implementation (Every page entry has a counter; every time page is referenced through this entry, copy the clock into the counter; When a page needs to be changed, look at the counters to find smallest value. Search algorithm needed.)
+	\item Stack implementation (Keep a stack of page numbers in a double link form. If a page is referenced move it to the top. No search for replacement. But updates are expensive.)
+\end{itemize}
+
+\includegraphics[scale=0.24]{10.39.png}
+
+Because LRU is expensive, we use LRU approximations:
+
+\subsubsection{Second-chance algorithm}
+
+LRU approximation.
+
+\begin{itemize}
+	\item Generally FIFO, plus hardware-provided reference bit
+	\item If page to be replaced has reference bit = 0, replace it, else set bit to 0 and try next page.
+	\item Usually implemented with refernce bit and circular queue.
+\end{itemize}
+
+\subsubsection{Enhanced Second-chance Algorithm}
+We can enhance the second-chance algorithm by considering the reference bit
+and the modify (dirty) bit as an ordered pair. With these
+two bits, we have the following four possible classes:
+
+\begin{itemize}
+	\item (0, 0) neither recently used nor modified —best page to replace
+	\item (0, 1) not recently used but modified — not quite as good, because the page will need to be written out before replacement
+	\item (1, 0) recently used but clean—probably will be used again soon
+	\item (1, 1) recently used and modified—probably will be used again soon, and the page will be need to be written out to secondary storage before it can be replaced
+\end{itemize}
+
+\includegraphics[scale=0.30]{10.43.png}
+
+\subsubsection{Counting Algorithms}
+Keep a counter of the number of references that have been made
+to each page.
+
+\begin{itemize}
+	\item \textbf{Lease Frequently Used (LFU) Algorithm}: Replaces page with smallest count.
+	\item \textbf{Most Frequently Used (MFU) Algorithm}:Based on the argument that the page with the smallest count was probably just brought in and has yet to be used
+\end{itemize}
+
+\subsubsection{Page Buffering Algorithms}
+Make use of free-frame list.
+
+Ideas:
+\begin{itemize}
+	\item Maintain a list of modified pages. Whenever the paging device is idle, a modified page is selected and is written to secondary storage. Its modify bit is then reset.
+	\item Possibly, keep free frame contents intact and note what is in them. If referenced again before reused, no need to load contents again from disk.
+\end{itemize}
+
+
+
+\subsection{Frame allocation algorithms}
+\begin{itemize}
+	\item Each process needs minimum number of frames
+	\item Maximum of course is total frames in the system
+	\item There are two major allocation schemes: \textbf{fixed allocation} and \textbf{priority allocation}.
+\end{itemize}
+
+
+\subsubsection{Fixed allocation}
+Equal allocation: For example, if there are 100 frames (after allocating
+frames for the OS) and 5 processes, give each process 20 frames. (keep some for free frame list/pool as well).
+
+Proportional allocation: Allocate according to the size of process (Dynamic as degree of multiprogramming, process sizes change).
+
+$s_i$ = size of process $p_i$
+
+$S = \sum_{}^{}s_i$
+
+$m$ = total number of frames
+
+$a_i$ = allocation for $p_i$ = $\frac{s_i}{S} \cdot m$
+
+There are two types of locality for allocation:
+
+\begin{itemize}
+	\item \textbf{Global replacement}: process selects a replacement frame from the set of all frames; one process can take a frame from another
+	\item \textbf{Local replacement}: each process selects from only its own set of allocated frames
+\end{itemize}
+
+\subsubsection{Reclaiming Pages}
+A strategy to implement global page-replacement policy. All memory requests are satisfied from the free-frame list, rather than
+waiting for the list to drop to zero before we begin selecting pages for
+replacement. Page replacement is triggered when the list falls below a certain
+threshold.
+
+\includegraphics[scale=0.30]{10.51.png}
+
+\subsubsection{NUMA (Non-uniform memory access)}
+So far, we assumed that all memory accessed equally Many systems are NUMA - speed of access to memory varies.
+
+Try to allocate memory close to the CPU on which the thread is scheduled.
+
+\includegraphics[scale=0.30]{10.53.png}
+
+\subsection{Thrashing and Locality}
+Thrashing = If a process does not have “enough” pages, the page-fault rate is very high. A process is busy swapping pages in and out
+
+\includegraphics[scale=0.25]{10.56.png}
+
+Programs do not access memory randomly. Instead, they move through different \textbf{localities}. A locality is a set of pages that are actively used together at a specific point in time.
+
+\begin{itemize}
+	\item Temporal Locality: If a page is referenced, it is likely to be referenced again soon (e.g., inside a while loop).
+	\item Spatial Locality: If a page is referenced, nearby pages are likely to be referenced soon (e.g., elements in an array).
+	\item Migration: As a process executes, it migrates from one locality (like an initialization function) to another (like the main processing loop. Localities can overlap (e.g., a function call within a loop).
+\end{itemize}
+
+Locality is the reason that demand paging works.
+
+\includegraphics[scale=0.45]{10.57.png}
+
+\subsubsection{Working-Set Model}
+The \textbf{working-set model} is based on the assumption of locality. This model
+uses a parameter, $\Delta$, to define the working-set window. The idea is to examine
+the most recent $\Delta$ page references. Example 10,000 instructions.
+
+$WSS_i$ (working set size of process $P_i$) = total number of pages referenced in the most recent $\Delta$.
+
+$ D = \sum_{}^{} WSS_i$ = total demand frames by the system.
+
+$m$ = number of available frames.
+
+If $D > m$ then we get thrashing. You can enforce a policy that if $D > m$, suspend or swap out one of the processes.
+
+\includegraphics[scale=0.27]{10.60.png}
+
+Direct relationship between working set of a process and its page-fault rate. Working set changes over time:
+
+\includegraphics[scale=0.24]{10.63.png}
+
+\subsubsection{Page Fault Rates}
+The working-set model is successful, and knowledge of the working set can
+be useful for prepaging, but it seems a clumsy way to control
+thrashing. A strategy that uses the page-fault frequency (PFF) takes a more
+direct approach.
+
+\includegraphics[scale=0.23]{10.62.png}
+
+\subsubsection{Buddy System}
+
+\begin{itemize}
+	\item Allocates memory from fixed-size segment consisting of physically-contiguous pages.
+	\item Memory allocated using power-of-2 allocator (Request rounded up to next highest power of 2)
+	\item When smaller allocation needed than is available, current chunk split into two buddies of next-lower power of 2.
+\end{itemize}
+
+Example:
+Assume 256KB chunk available, kernel requests 21KB:
+\begin{itemize}
+	\item Split in buddies $A_l$ and $A_r$ of 128KB each. One further divided in $B_l$ and $B_r$ of 64KB each. One further divided in $C_l$ and $C_r$ of 32KB each - one used to satisy request.
+\end{itemize}
+
+\textbf{Coalescing} = efficiently combine budies to form larger segments.
+
+\includegraphics[scale=0.27]{10.66.png}
+
+\subsubsection{Slab Allocation}
+Alternate strategy for allocaing kernel memory:
+
+\begin{itemize}
+	\item Slab is one or more physically contiguous pages
+	\item Cache consists of one or more slabs
+	\item When cache created, filled with objects marked as \textbf{free}
+	\item When structures stored, objects marked as \textbf{used}
+	\item If slab is full of used objects, next object allocated from empty slab. If no empty slabs, new slab allocated
+\end{itemize}
+
+Benefits include no fragmentation, fast memory request satisfaction
+
+\includegraphics[scale=0.32]{10.67.png}
+
+\subsection{Prepaging}
+Pure demand paging means large number of page faults when a process is started.
+
+\textbf{Prepaging} = bring some or all of the pages that will be needed into memory at one time. But if prepaged pages are unused, I/O and memory was wasted
+
+$s$ = pages that are prepaged
+
+$\alpha$ = fraction of prepaged pages used, $0 \leq \alpha \leq 1$
+
+How does the cost of prepaging $s * \alpha$ pages compare to $s * (1-\alpha)$
+
+\subsection{Page size}
+Sometimes OS designers have a choice. Always power of 2. On average, growing over time
+
+Page size selection must take into consideration:
+\begin{itemize}
+	\item Fragmentation
+	\item Page table size
+	\item Resolution
+	\item I/O overhead
+	\item Number of page faults
+	\item Locality
+	\item TLB size and effectiveness
+\end{itemize}
+
+\subsection{TLB Reach}
+TLB (Translation Lookaside Buffer) = small cache located within the CPU's Memory Management Unit (MMU). Think of the TLB as a fast-lookup table that maps Virtual Page Numbers directly to Physical Frame Numbers. Ideally, working set is stored in the TLB.
+
+\begin{itemize}
+	\item \textbf{TLB Hit:} The CPU finds the translation in the TLB.
+	\item \textbf{TLB Miss:} The CPU finds the translation in the TLB.
+	\item \textbf{TLB Reach:} The amount of memory accessible form the TLB = (TLB Size) X (Page Size)
+\end{itemize}
+
+Effective acces time changes:
+\begin{multline*}
+	EAT = \alpha(\epsilon + ma) \\
+	+ (1 - \alpha)(\epsilon + 2ma)
+\end{multline*}
+
+\subsection{Program Structure}
+System performance can be improved if the user (or compiler) has an awareness of the underlying demand paging.
+
+\begin{minipage}{\linewidth}
+	\begin{lstlisting}
+\\This has 128 x 128 = 16,384 page faults
+for (j = 0; j <128; j++)
+	for (i = 0; i < 128; i++)
+		data[i,j] = 0;
+
+\\This has 128 page faults
+for (j = 0; j <128; j++)
+	for (i = 0; i < 128; i++)
+		data[i,j] = 0;
+\end{lstlisting}
+\end{minipage}
+
+\subsection{I/O Interlock}
+I/O Interlock = Pages must
+sometimes be locked into
+memory.
+
+\textbf{Pinning} = pin pages to lock into memory
+
+\includegraphics[scale=0.25]{10.76.png}
