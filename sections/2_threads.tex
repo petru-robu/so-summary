@@ -1,0 +1,111 @@
+\section{Threads}
+
+\subsection*{General}
+
+A thread is the basic unit of CPU utilization. It is less costly than process, because each process can have multiple threads that share resources (data, code, files), having only independent registers, stack and PC. (the multithreaded model).
+
+\includegraphics[scale=0.20]{4.5.png}
+
+They can be used in the server model to process requests
+
+
+\includegraphics[scale=0.20]{4.6.png}
+
+\subsection*{Parallelism \& concurrency}
+
+- \textbf{Parallelism} = a system can execute more than one task simultaneously.
+
+- \textbf{Concurrency} = more than one task is making progress.
+
+\includegraphics[scale=0.20]{4.9.png}
+
+- \textbf{data parallelism} = distribute subsets of same data across multiple cores, same operation
+
+- \textbf{task parallelism} = distribute threads across multiple cores, each with unique operation
+
+\includegraphics[scale=0.25]{4.11.png}
+
+\subsection*{Amdahl's law}
+
+This measures the performance gain from adding cores to an application that has both sequential and parallel components.
+
+- $S$ - serial portion (fraction), $1 - S$ - parallel portion
+- $N$ - cores
+
+$$
+speedup \leq \frac{1}{S + \frac{1 - S}{N}}
+$$
+
+Applied. $S = 0.25$ ($25\%$ serial), moving from 1 to 2 cores $N = 2$.
+
+$$
+s \leq \frac{1}{0.25 + \frac{0.75}{2}} = 1.6
+$$
+
+Speedup of up to 1.6 times.
+
+\subsection*{User vs Kernel Threads}
+
+- \textbf{User thread} = managed by user level library (e.g. pthread)
+
+- \textbf{Kernel Thread} = supported by the Kernel
+
+There are three models that map user threads to kernel threads.
+
+- \textbf{many-to-one}: many user threads mapped to 1 kernel thread. One thread blocking causes others to block.
+
+\includegraphics[scale=0.25]{4.17.png}
+
+
+- \textbf{one-to-one}: 1 user threads mapped to 1 kernel thread. More concurrency than previous.
+\includegraphics[scale=0.25]{4.18.png}
+
+
+- \textbf{many-to-many}: many user threads mapped to many kernel threads.
+Allows OS to create sufficient number of kernel threads.
+\includegraphics[scale=0.25]{4.19.png}
+
+
+
+- \textbf{two level}: similar to M:M but
+allows one user thread to be bound to kernel thread.
+\includegraphics[scale=0.25]{4.20.png}
+
+\subsection*{Other}
+
+Implicit threading represents the growing trend of having threads created and managed by compilers and run-time libraries, instead of
+creating them explicitly.
+
+Many methods.
+
+- thread pools : create a pool of threads that await work
+
+- fork-join parallelism: like divide et impera, but on threads
+
+\includegraphics[scale=0.25]{4.38.png}
+
+
+- OpenMP - set of compiler directives that identify parallel
+regions \texttt{\#pragma omp parallel}
+
+
+- there exists a complication on \textbf{fork} and \textbf{exec}.
+- there exists some versions of fork (one that forks all threads, one that forks only the thread that
+calls the fork)
+- exec is simpler and it replaces all the threads with the new code.
+
+\subsection*{Signal}
+
+Signals are used in UNIX systems to notify a process that something has happened.
+
+A signal handler is used to process a signal. We have predefined and user defined handlers.
+
+A signal can be delivered to all threads, to certain threads or the thread that the signal applies to.
+
+- \textbf{thread cancellations} is the termination of a thread before it finishes.
+There are two approaches \textbf{asynchronous cancellation} - terminate immediately
+and \textbf{deffered cancellation} allows the thread to check periodcally if it should be cancelled.
+
+Cancellation can be disabled by the thread.
+
+- \textbf{Thread Local Storage} - each thread can have its own copy of data
