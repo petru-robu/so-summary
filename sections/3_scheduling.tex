@@ -30,7 +30,7 @@ FCFS = First-Come, First-Served
 Put the processes on the CPU the order in which they request it. (this is non-preemptive)
 Convoy effect - short process behind long process (this results in optimal average waiting time)
 
-Example: 
+Example:
 For processes with burst times $P_1 = 24$; $P_2 = 3$; $P_3 = 3$; This is the resulting Gantt Chart:
 \includegraphics[scale=0.25]{5.12.png}
 
@@ -50,7 +50,7 @@ Determining the length of the next CPU-burst: ask the user to provide estimation
 
 \textbf{Exponential averaging} = Use length of previous CPU-burst and estimate the next one:
 
-$t_n$ = length on n-th CPU burst 
+$t_n$ = length on n-th CPU burst
 
 $\tau_{n+1}$ = predicted next CPU burst
 
@@ -224,4 +224,7 @@ An application receives N shares where $N \le T$.
 This ensures each application will receive $\frac{N}{T}$ of the total processor time.
 
 \subsection{Little's formula}
-$n = \lambda \cdot W$. 
+$n$ = average queue length
+$W$ = average waiting time in queue
+$\lambda$ = average arrival rate into queue
+$n = \lambda \cdot W$.

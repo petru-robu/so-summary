@@ -1,0 +1,342 @@
+\section{Synchronization}
+
+A \textbf{race condition} is when multiple threads/processes access
+and manipulate data concurrently, and the result depends on the \textbf{order}
+of the access.
+
+Here, two process acces the same next\_pid and create two different children with
+the same pid.
+
+\includegraphics[scale=0.32]{6.5.png}
+
+\subsection{Critical section}
+
+A critical sections is a segment of instruction in which the process is accessing
+common variables, tables, writing to files etc. When one process is in a critical section,
+\textbf{no other process may be in their critical section}.
+
+Each process must ask permission to enter the critical section, then exit and continue.
+
+
+\includegraphics[scale=0.25]{6.7.png}
+
+\subsubsection{Solution criteria}
+
+\begin{itemize}
+    \item mutual exclusion - if a process is executing a critical section, no other process will
+    \item progress - If no process is in its critical section and some processes wish to enter, then only those processes not in their remainder section can participate in the decision of which will enter next, and this selection cannot be postponed indefinitely.
+    \item bounded waiting - There is a limit on the number of times other processes are allowed to enter their critical sections after a process has made a request to enter and before that request is granted. (This prevents starvation).
+\end{itemize}
+
+\subsubsection{Solutions}
+
+\begin{itemize}
+    \item disable interrupts on entry and enable on exit - risk of starvation, doesn't work with multiple cores
+    \item assume load/store are atomic (cannot be interrupted) - two processes have a turn variable which shows whose turn it is to enter the critical section: doesn't meet progress and bounded waiting reqs.
+
+\includegraphics[scale=0.15]{6.11.png}
+
+    \item \textbf{Peterson's solution} - use turn (shows whose turn is it) and a boolean flag (shows if process is ready to enter critical section). When process i is ready, it lets j exectue if its ready, then it executes itself. It doesn't work on modern architectures because compilers may reorder operations that have no dependencies.
+    \item
+\includegraphics[scale=0.15]{6.14.png}
+\end{itemize}
+
+If the turn and flag setting instructions are changed, we risk getting the processes into the critical section at the same time. Thus, we need
+\textbf{memory barriers}.
+
+
+\includegraphics[scale=0.25]{6.19.png}
+
+A \textbf{memory barrier} is an instruction that forces all chances in  memory to be propagated to all processors.
+
+
+\includegraphics[scale=0.25]{6.22.png}
+
+
+There exists hardware support for this
+
+- uniprocessors - disable interrupts
+
+- hardware instructions
+
+- atomic variables
+\subsubsection{Hardware instructions}
+
+\texttt{test\_and\_set} - executed atomically, returns the original value of the passed parameter, sets the new value to true.
+
+\includegraphics[scale=0.20]{6.25.png}
+
+We can implement a lock (shared variable lock) as such:
+
+
+\includegraphics[scale=0.20]{6.26.png}
+
+\texttt{compare\_and\_swap} - executed atomically, returns the value of original, sets the value = new\_value only if value was the expected value.
+
+
+\includegraphics[scale=0.20]{6.27.png}
+
+We can implement a memory barrier with a shared variable lock initialized to 0.
+
+
+\includegraphics[scale=0.20]{6.28.png}
+
+Also, we can implement bounded waiting by giving the critical section access to the next waiting process,
+only unlocking if there is no such process.
+
+
+\includegraphics[scale=0.20]{6.29.png}
+
+\subsubsection{Atomic variables}
+
+Variables of basic data types (int, bool) that have atomic operations on them. For example \texttt{sequence} atomic
+variable and \texttt{increment(\&sequence)} atomic.
+
+\begin{lstlisting}
+    void increment(atomic_int *v)
+{
+    int temp;
+    do {
+        temp = *v;
+    }
+    while (temp != (compare_and_swap(v,temp,temp+1));
+}
+\end{lstlisting}
+
+\subsubsection{Mutex Lock}
+
+- boolean variable indicating if lock is available or not.
+
+- protect by acquiring and releasing lock.
+
+- requires busy waiting, it is named also \textbf{spinlock}
+
+\begin{lstlisting}
+    while (true) {
+        acquire lock
+        // critical section
+        release lock
+        // remainder section
+}
+\end{lstlisting}
+
+\subsubsection{Semaphore Lock}
+
+Semaphore S - integer variable indicating available resources.
+
+- \texttt{wait()/P()} and \texttt{signal()/V()}, both need to be atomic
+
+\begin{lstlisting}
+    wait(S) {
+        while (S <= 0)
+        ; // busy wait
+        S--;
+}
+\end{lstlisting}
+
+\begin{lstlisting}
+    signal(S) {
+        S++;
+}
+\end{lstlisting}
+
+A binary semaphore (values 0/1) is a \textbf{mutex}.
+
+We can use a \textbf{semaphore} to guarantee that two statements $S_1$ and $S_2$ in two different processes
+happen in the correct order.
+
+\includegraphics[scale=0.20]{6.36.png}
+
+\textbf{Busy waiting} is not a good solution as processes can spend much time in critical zone. We want to implement a waiting
+queue for ready processes.
+
+We have \texttt{block} - place the invoking process in waiting queue, \texttt{wakeup} remove one of the processes from the
+waiting queue and add to ready queue.
+
+\begin{lstlisting}
+    typedef struct {
+    int value; // value of the semaphore
+    struct process *list; // associated queue of semaphore, as linked list
+} semaphore;
+\end{lstlisting}
+
+The new wait and signal is
+\begin{lstlisting}
+wait(semaphore *S) {
+    S->value--;
+    if (S->value < 0) {
+        add this process to S->list;
+        block();
+    }
+}
+signal(semaphore *S) {
+    S->value++;
+    if (S->value <= 0) {
+        remove a process P from S->list;
+        wakeup(P);
+    }
+}
+\end{lstlisting}
+
+\subsubsection{Monitor}
+
+- high level synchronization mechanism.
+
+- internal variables accessible only to the code inside the monitor
+
+- only one process may be active inside the monitor
+
+Pseudocode:
+\begin{lstlisting}
+monitor monitor-name
+{
+    // shared variable declarations
+    procedure P1 (...) { ... }
+    procedure P2 (...) { ... }
+    procedure Pn (...) {...}
+    initialization code (...) {... }
+}
+\end{lstlisting}
+
+\includegraphics[scale=0.20]{6.43.png}
+
+\subsubsection{Conditional variables}
+
+To allow a process to wait within the monitor for a specific event (without busy waiting), we introduce the condition variable.A condition variable $x$ acts as a queue of processes waiting for a specific condition to become true. It does not store a value (unlike a semaphore); it only facilitates waiting and signaling.\paragraph{Operations}The only operations allowed on a condition variable $x$ are:\begin{itemize}\item \texttt{x.wait()} -- The process invoking this is suspended and placed in the queue associated with $x$. Crucially, the process releases the monitor lock, allowing other processes to enter the monitor (potentially to change the condition).\item \texttt{x.signal()} -- Resumes exactly one suspended process (if any) from $x$'s queue. If no process is waiting, this operation has \textbf{no effect} (unlike semaphores, where signal always increments state).\end{itemize}
+
+This is a monitor that enforces S1 to happen before S2 using 2 procedures
+and conditional variables
+
+\begin{lstlisting}
+
+monitor SequenceEnforcer { boolean done; condition x;
+
+    procedure F1() {
+        S1;
+        done = true;
+        x.signal();
+    }
+
+    procedure F2() {
+        if (!done)
+            x.wait();
+        S2;
+    }
+
+    initialization code() {
+        done = false;
+    }
+} \end{lstlisting}
+
+\subsubsection*{Monitor with Semaphore}
+
+\begin{lstlisting}
+    semaphore mutex; // (initially = 1)
+    semaphore next; // (initially = 0)
+    int next_count = 0; // number of processes waiting inside the monitor
+
+    // procedure P body
+    wait(mutex);
+
+    // body of P;
+
+    if (next_count > 0)
+        signal(next) // let other process enter
+    else
+        signal(mutex); // unlock
+\end{lstlisting}
+
+\subsubsection*{Monitor - Conditional variables}
+
+\begin{lstlisting}
+    mutex; // initially 1
+    // for each condition variable
+    semaphore x_sem; // (initially = 0)
+    int x_count = 0;
+
+    // wait
+    x_count++;
+    if (next_count > 0)
+        signal(next); // get into the waiting queue and unlock the first waiting variable
+    else
+        signal(mutex); // get access over resources
+    wait(x_sem);
+    x_count--;
+
+    // signal
+    if (x_count > 0) {
+    next_count++;
+    signal(x_sem);
+        wait(next);
+        next_count--;
+    }
+\end{lstlisting}
+
+We can add conditional waiting \texttt{x.wait(c)} where c is a priority and the process with lowest number (highest priotity)
+will be accessed next.
+
+\subsubsection{Single Resource Allocator}
+
+Allocate a single resource among competing processes using priority
+numbers that specifies the maximum time a process plans to use the
+resource.
+
+\begin{lstlisting}
+R.acquire(t); // t time
+...
+// access the resurce;
+...
+R.release;
+\end{lstlisting}
+
+Which can be implemented as
+
+\begin{lstlisting}
+monitor ResourceAllocator
+{
+    boolean busy;
+    condition x;
+
+    void acquire(int time) {
+        if (busy)
+            x.wait(time);
+        busy = true;
+    }
+
+    void release() {
+        busy = false;
+        x.signal();
+    }
+    initialization code() {
+        busy = false;
+    }
+}
+\end{lstlisting}
+
+\subsection{Liveliness}
+
+Liveness refers to a set of properties that a system must satisfy to
+ensure processes make progress. Indefinite waiting - liveliness failure.
+
+
+\textbf{Deadlock} – two or more processes are waiting indefinitely for an
+event that can be caused by only one of the waiting processes
+
+\includegraphics[scale=0.20]{6.57.png}
+
+Consider if P0 executes wait(S) and P1 wait(Q). When P0 executes
+wait(Q), it must wait until P1 executes signal(Q)
+
+However, P1 is waiting until P0 execute signal(S).
+
+
+Since these signal() operations will never be executed, P0 and P1 are
+deadlocked.
+
+Other forms of \textbf{deadlock} :
+\begin{itemize}
+    \item starvation - A process may never be removed from the semaphore queue in
+which it is suspended
+    \item Priority inversion - Scheduling problem when lower-priority process
+holds a lock needed by higher-priority process
+\end{itemize}
